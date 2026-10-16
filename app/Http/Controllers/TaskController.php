@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Auth;
 
 class TaskController extends Controller
 {
+    /**
+     * Muestra el Dashboard con métricas y el listado formateado según el rol.
+     */
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -24,7 +27,7 @@ class TaskController extends Controller
             });
         }
 
-        // 2. Filtros dinámicos de la tabla (incluyendo la opción de 'vencidas')
+        // 2. Filtro dinámico por Estado
         if ($request->filled('status')) {
             if ($request->status === 'overdue') {
                 $query->where('due_date', '<', $today)
@@ -34,16 +37,23 @@ class TaskController extends Controller
             }
         }
 
+        // Filtro por Prioridad
         if ($request->filled('priority')) {
             $query->where('priority', $request->priority);
         }
 
-        $tasks = $query->with(['user', 'assignedUser'])->latest()->get();
+        $allTasks = $query->with(['user', 'assignedUser'])->latest()->get();
 
-        // 3. Obtener todos los usuarios activos para asignar responsables
-        $users = User::where('is_active', true)->get();
+        // 3. Si es Editor, separar las tareas en dos grupos: asignadas a él vs creadas por él
+        if ($user->isEditor()) {
+            $assignedTasks = $allTasks->filter(fn($t) => $t->assigned_to === $user->id);
+            $createdTasks  = $allTasks->filter(fn($t) => $t->user_id === $user->id);
+        } else {
+            $assignedTasks = collect();
+            $createdTasks  = $allTasks;
+        }
 
-        // 4. Métricas precisas y sin solapamiento
+        // 4. Métricas precisas y sin duplicidad
         $baseMetrics = Task::query();
         if (!$user->isAdmin()) {
             $baseMetrics->where(function ($q) use ($user) {
@@ -53,35 +63,48 @@ class TaskController extends Controller
         }
 
         $metrics = [
-            // Pendientes a tiempo (no vencidas) o sin fecha
             'pending' => (clone $baseMetrics)->where('status', 'pending')
                 ->where(function ($q) use ($today) {
                     $q->whereNull('due_date')
                       ->orWhere('due_date', '>=', $today);
                 })->count(),
 
-            // En proceso a tiempo (no vencidas) o sin fecha
             'in_progress' => (clone $baseMetrics)->where('status', 'in_progress')
                 ->where(function ($q) use ($today) {
                     $q->whereNull('due_date')
                       ->orWhere('due_date', '>=', $today);
                 })->count(),
 
-            // Completadas (sin importar la fecha)
             'completed' => (clone $baseMetrics)->where('status', 'completed')->count(),
 
-            // Vencidas estrictas (fecha menor a hoy y no completadas)
             'overdue' => (clone $baseMetrics)->where('due_date', '<', $today)
                 ->where('status', '!=', 'completed')->count(),
         ];
 
-        return view('dashboard', compact('tasks', 'users', 'metrics'));
+        return view('dashboard', compact('allTasks', 'assignedTasks', 'createdTasks', 'metrics'));
     }
 
+    /**
+     * Muestra el formulario para crear una nueva tarea en una vista dedicada.
+     */
+    public function create()
+    {
+        if (Auth::user()->isLector()) {
+            abort(403, 'Los usuarios Lectores no tienen permiso para crear tareas.');
+        }
+
+        $users = User::where('is_active', true)->get();
+
+        return view('tasks.create', compact('users'));
+    }
+
+    /**
+     * Almacena una nueva tarea en la base de datos.
+     */
     public function store(Request $request)
     {
         if (Auth::user()->isLector()) {
-            abort(403, 'Los usuarios Lectores no pueden crear tareas.');
+            abort(403, 'Los usuarios Lectores no tienen permiso para crear tareas.');
         }
 
         $validated = $request->validate([
@@ -98,6 +121,9 @@ class TaskController extends Controller
         return redirect()->route('dashboard')->with('success', 'Tarea creada exitosamente.');
     }
 
+    /**
+     * Formulario de edición de tarea.
+     */
     public function edit(Task $task)
     {
         $user = Auth::user();
@@ -115,6 +141,9 @@ class TaskController extends Controller
         return view('tasks.edit', compact('task', 'users'));
     }
 
+    /**
+     * Actualiza la tarea.
+     */
     public function update(Request $request, Task $task)
     {
         $user = Auth::user();
@@ -141,6 +170,9 @@ class TaskController extends Controller
         return redirect()->route('dashboard')->with('success', 'Tarea actualizada exitosamente.');
     }
 
+    /**
+     * Elimina la tarea.
+     */
     public function destroy(Task $task)
     {
         $user = Auth::user();

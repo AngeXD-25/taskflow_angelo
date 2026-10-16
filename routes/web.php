@@ -9,11 +9,14 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// Rutas protegidas por autenticación y estado activo
+// Rutas protegidas por Autenticación y Verificación de Estado Activo
 Route::middleware(['auth', 'verified', 'user.active'])->group(function () {
     
-    // Panel de Tareas
+    // Panel Dashboard (Accesible para Admin, Editor y Lector)
     Route::get('/dashboard', [TaskController::class, 'index'])->name('dashboard');
+    
+    // Rutas para Tareas (Creación separada)
+    Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
     Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
     Route::get('/tasks/{task}/edit', [TaskController::class, 'edit'])->name('tasks.edit');
     Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');

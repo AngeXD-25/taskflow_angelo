@@ -157,13 +157,24 @@ class TaskController extends Controller
         }
 
         $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'status'      => 'required|in:pending,in_progress,completed',
-            'priority'    => 'required|in:low,medium,high',
-            'due_date'    => 'nullable|date',
-            'assigned_to' => 'nullable|exists:users,id',
-        ]);
+        'title'       => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'status'      => 'required|in:pending,in_progress,completed',
+        'priority'    => 'required|in:low,medium,high',
+        'due_date'    => 'nullable|date',
+        'assigned_to' => 'nullable|exists:users,id',
+        'attachment'  => 'nullable|file|mimes:docx,xlsx,pptx,pdf,jpg,png,gif|max:2048', // Validación estricta
+    ]);
+
+        // Manejo de subida de archivos
+            if ($request->hasFile('attachment')) {
+        // Si ya tenía un archivo anterior, lo borramos de storage
+             if ($task->attachment && Storage::disk('public')->exists($task->attachment)) {
+                 Storage::disk('public')->delete($task->attachment);
+            }
+        // Guardamos el nuevo archivo en storage/app/public/tasks
+        $validated['attachment'] = $request->file('attachment')->store('tasks', 'public');
+    }
 
         $task->update($validated);
 

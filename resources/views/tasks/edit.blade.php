@@ -1,4 +1,4 @@
-<<x-app-layout>
+<x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Editar Tarea') }}
@@ -6,65 +6,80 @@
     </x-slot>
 
     <div class="py-8 max-w-3xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-            <form action="{{ route('tasks.update', $task) }}" method="POST">
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <!-- IMPORTANTE: enctype para permitir subida de archivos -->
+            <form action="{{ route('tasks.update', $task) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 @method('PUT')
 
-                <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Título *</label>
+                    <input type="text" name="title" value="{{ old('title', $task->title) }}" required class="mt-1 w-full rounded-2xl border-gray-200 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Descripción</label>
+                    <textarea name="description" rows="3" class="mt-1 w-full rounded-2xl border-gray-200 text-sm">{{ old('description', $task->description) }}</textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Título *</label>
-                        <input type="text" name="title" value="{{ old('title', $task->title) }}" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <label class="block text-sm font-medium text-gray-700">Estado *</label>
+                        <select name="status" class="mt-1 w-full rounded-2xl border-gray-200 text-sm">
+                            <option value="pending" {{ old('status', $task->status) == 'pending' ? 'selected' : '' }}>Pendiente</option>
+                            <option value="in_progress" {{ old('status', $task->status) == 'in_progress' ? 'selected' : '' }}>En Proceso</option>
+                            <option value="completed" {{ old('status', $task->status) == 'completed' ? 'selected' : '' }}>Completada</option>
+                        </select>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Descripción</label>
-                        <textarea name="description" rows="3" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('description', $task->description) }}</textarea>
+                        <label class="block text-sm font-medium text-gray-700">Prioridad *</label>
+                        <select name="priority" class="mt-1 w-full rounded-2xl border-gray-200 text-sm">
+                            <option value="low" {{ old('priority', $task->priority) == 'low' ? 'selected' : '' }}>Baja</option>
+                            <option value="medium" {{ old('priority', $task->priority) == 'medium' ? 'selected' : '' }}>Media</option>
+                            <option value="high" {{ old('priority', $task->priority) == 'high' ? 'selected' : '' }}>Alta</option>
+                        </select>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Estado *</label>
-                            <select name="status" class="mt-1 w-full rounded-md border-gray-300 text-sm">
-                                <option value="pending" {{ old('status', $task->status) == 'pending' ? 'selected' : '' }}>Pendiente</option>
-                                <option value="in_progress" {{ old('status', $task->status) == 'in_progress' ? 'selected' : '' }}>En Proceso</option>
-                                <option value="completed" {{ old('status', $task->status) == 'completed' ? 'selected' : '' }}>Completada</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Prioridad *</label>
-                            <select name="priority" class="mt-1 w-full rounded-md border-gray-300 text-sm">
-                                <option value="low" {{ old('priority', $task->priority) == 'low' ? 'selected' : '' }}>Baja</option>
-                                <option value="medium" {{ old('priority', $task->priority) == 'medium' ? 'selected' : '' }}>Media</option>
-                                <option value="high" {{ old('priority', $task->priority) == 'high' ? 'selected' : '' }}>Alta</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Asignar Responsable</label>
-                            <select name="assigned_to" class="mt-1 w-full rounded-md border-gray-300 text-sm">
-                                <option value="">-- Sin asignar --</option>
-                                @foreach($users as $u)
-                                    <option value="{{ $u->id }}" {{ old('assigned_to', $task->assigned_to) == $u->id ? 'selected' : '' }}>
-                                        {{ $u->name }} ({{ $u->role->name ?? 'Sin Rol' }})
+                    <div>
+                         <label class="block text-sm font-medium text-gray-700">Asignar Responsable</label>
+                             <select name="assigned_to" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                                 <option value="">-- Sin asignar --</option>
+                                     @foreach($users as $u)
+                                     <option value="{{ $u->id }}" {{ old('assigned_to', $task->assigned_to) == $u->id ? 'selected' : '' }}>
+                                    {{ $u->name }} ({{ $u->role->name ?? 'Sin Rol' }})
                                     </option>
-                                @endforeach
-                            </select>
+                                     @endforeach
+                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Fecha Límite</label>
-                            <input type="date" name="due_date" value="{{ old('due_date', $task->due_date) }}" class="mt-1 w-full rounded-md border-gray-300 text-sm">
-                        </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Fecha Límite</label>
+                        <input type="date" name="due_date" value="{{ old('due_date', $task->due_date) }}" class="mt-1 w-full rounded-2xl border-gray-200 text-sm">
                     </div>
 
-                    <div class="flex items-center justify-end space-x-3 pt-4">
-                        <a href="{{ route('dashboard') }}" class="text-sm text-gray-600 hover:underline">Cancelar</a>
-                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md text-sm transition">
-                            Actualizar Tarea
-                        </button>
+                    <!-- CAMPO DE SUBIDA DE ARCHIVO -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Adjuntar Archivo</label>
+                        <input type="file" name="attachment" accept=".docx,.xlsx,.pptx,.pdf,.jpg,.png,.gif" class="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        <p class="text-xs text-gray-400 mt-1">Formatos: docx, xlsx, pptx, pdf, jpg, png, gif (Máx. 2MB).</p>
+                        @error('attachment') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+
+                        @if($task->attachment)
+                            <div class="mt-2">
+                                <span class="text-xs text-gray-600">Archivo actual: </span>
+                                <a href="{{ asset('storage/' . $task->attachment) }}" target="_blank" class="text-xs text-indigo-600 hover:underline font-semibold">Ver archivo adjunto</a>
+                            </div>
+                        @endif
                     </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-4">
+                    <a href="{{ route('dashboard') }}" class="text-sm text-gray-600 hover:underline">Cancelar</a>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full text-sm transition">
+                        Actualizar Tarea
+                    </button>
                 </div>
             </form>
         </div>

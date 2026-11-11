@@ -17,6 +17,46 @@ class TaskController extends Controller
         $user = Auth::user();
         $today = now()->toDateString();
 
+
+        $baseQuery = Task::query();
+        if (!$user->isAdmin()) {
+            $baseQuery->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhere('assigned_to', $user->id);
+            });
+        }
+
+        // Métricas del Dashboard
+        $metrics = [
+            'pending' => (clone $baseQuery)->where('status', 'pending')
+                ->where(fn($q) => $q->whereNull('due_date')->orWhere('due_date', '>=', $today))->count(),
+            'in_progress' => (clone $baseQuery)->where('status', 'in_progress')
+                ->where(fn($q) => $q->whereNull('due_date')->orWhere('due_date', '>=', $today))->count(),
+            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'overdue' => (clone $baseQuery)->where('due_date', '<', $today)
+                ->where('status', '!=', 'completed')->count(),
+        ];
+
+        // Tareas con fecha límite para el calendario del mes actual
+        $startOfMonth = now()->startOfMonth()->toDateString();
+        $endOfMonth = now()->endOfMonth()->toDateString();
+
+        $calendarTasks = (clone $baseQuery)
+            ->whereBetween('due_date', [$startOfMonth, $endOfMonth])
+            ->with(['assignedUser'])
+            ->get()
+            ->groupBy('due_date');
+
+        // Próximas tareas pendientes o en proceso
+        $upcomingTasks = (clone $baseQuery)
+            ->where('status', '!=', 'completed')
+            ->orderByRaw('due_date IS NULL, due_date ASC')
+            ->take(5)
+            ->get();
+
+
+
+
         // 1. Consulta base según el rol
         $query = Task::query();
 
@@ -81,8 +121,36 @@ class TaskController extends Controller
                 ->where('status', '!=', 'completed')->count(),
         ];
 
-        return view('dashboard', compact('allTasks', 'assignedTasks', 'createdTasks', 'metrics'));
+        return view('dashboard', compact('allTasks', 'assignedTasks', 'createdTasks', 'metrics', 'calendarTasks', 'upcomingTasks'));
     }
+
+
+    public function board()
+    {
+        $user = Auth::user();
+
+        $query = Task::with(['user', 'assignedUser'])->latest();
+
+        if (!$user->isAdmin()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhere('assigned_to', $user->id);
+            });
+        }
+
+        $tasks = $query->get();
+
+        // Agrupar tareas por columna Kanban
+        $pendingTasks = $tasks->where('status', 'pending');
+        $inProgressTasks = $tasks->where('status', 'in_progress');
+        $completedTasks = $tasks->where('status', 'completed');
+
+        return view('tasks.board', compact('pendingTasks', 'inProgressTasks', 'completedTasks'));
+    }
+
+
+
+
 
     /**
      * Muestra el formulario para crear una nueva tarea en una vista dedicada.
@@ -200,4 +268,24 @@ class TaskController extends Controller
 
         return redirect()->route('dashboard')->with('success', 'Tarea eliminada exitosamente.');
     }
+
+    public function toggleStatus(Request $request, Task $task)
+    {
+        $user = Auth::user();
+
+        if (!$user->isAdmin() && $task->user_id !== $user->id && $task->assigned_to !== $user->id) {
+            abort(403, 'No tienes permiso para modificar el estado de esta tarea.');
+        }
+
+        $request->validate([
+            'status' => 'required|in:pending,in_progress,completed',
+        ]);
+
+        $task->update([
+            'status' => $request->status,
+        ]);
+
+        return redirect()->back()->with('success', 'El estado de la tarea ha sido actualizado.');
+    }    
+
 }

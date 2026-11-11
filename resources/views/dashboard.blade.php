@@ -1,109 +1,116 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-                <h2 class="font-bold text-2xl text-gray-800 leading-tight">
-                    {{ __('TaskFlow - Panel de Control') }}
-                </h2>
-                <p class="text-xs text-gray-500 mt-1">
-                    Rol activo: <span class="font-semibold text-indigo-600">{{ Auth::user()->role->name ?? 'Usuario' }}</span>
-                </p>
-            </div>
+        <div class="flex items-center justify-between">
+            <h2 class="font-bold text-2xl text-gray-800 leading-tight">
+                {{ __('Dashboard') }}
+            </h2>
 
-            <!-- Botón de Nueva Tarea (Solo Admin y Editor) -->
-            @if(!Auth::user()->isLector())
-                <a href="{{ route('tasks.create') }}" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm transition">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    Nueva Tarea
+            <div class="flex items-center gap-3">
+                <a href="{{ route('tasks.board') }}" class="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-lg shadow-sm transition">
+                    Ver Tablero Kanban
                 </a>
-            @endif
+                @if(!Auth::user()->isLector())
+                    <a href="{{ route('tasks.create') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow transition">
+                        + Nueva Tarea
+                    </a>
+                @endif
+            </div>
         </div>
     </x-slot>
 
-    <div class="py-8">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="py-8 max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
-            <!-- Alerta de éxito -->
-            @if (session('success'))
-                <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md shadow-sm">
-                    {{ session('success') }}
-                </div>
-            @endif
+        <!-- Tarjetas de Métricas -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase">Pendientes</p>
+                <p class="text-3xl font-extrabold text-yellow-600 mt-1">{{ $metrics['pending'] }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase">En Proceso</p>
+                <p class="text-3xl font-extrabold text-blue-600 mt-1">{{ $metrics['in_progress'] }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase">Completadas</p>
+                <p class="text-3xl font-extrabold text-emerald-600 mt-1">{{ $metrics['completed'] }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase">Vencidas</p>
+                <p class="text-3xl font-extrabold text-red-600 mt-1">{{ $metrics['overdue'] }}</p>
+            </div>
+        </div>
 
-            <!-- 1. Tarjetas de Métricas -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-yellow-500">
-                    <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Pendientes</p>
-                    <p class="text-3xl font-extrabold text-yellow-600 mt-1">{{ $metrics['pending'] ?? 0 }}</p>
+        <!-- Calendario del Mes y Próximas Tareas -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Calendario Mensual (2 columnas) -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">
+                        Calendario de Tareas — {{ now()->translatedFormat('F Y') }}
+                    </h3>
                 </div>
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500">
-                    <p class="text-xs font-bold uppercase tracking-wider text-gray-400">En Proceso</p>
-                    <p class="text-3xl font-extrabold text-blue-600 mt-1">{{ $metrics['in_progress'] ?? 0 }}</p>
+
+                @php
+                    $startOfMonth = now()->startOfMonth();
+                    $daysInMonth = now()->daysInMonth;
+                    $firstDayOfWeek = $startOfMonth->dayOfWeekIso; // 1 (Lun) a 7 (Dom)
+                @endphp
+
+                <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-500 mb-2">
+                    <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
                 </div>
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500">
-                    <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Completadas</p>
-                    <p class="text-3xl font-extrabold text-green-600 mt-1">{{ $metrics['completed'] ?? 0 }}</p>
-                </div>
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-red-500">
-                    <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Vencidas</p>
-                    <p class="text-3xl font-extrabold text-red-600 mt-1">{{ $metrics['overdue'] ?? 0 }}</p>
+
+                <div class="grid grid-cols-7 gap-2">
+                    @for($i = 1; $i < $firstDayOfWeek; $i++)
+                        <div class="h-20 bg-gray-50 rounded-lg"></div>
+                    @endfor
+
+                    @for($day = 1; $day <= $daysInMonth; $day++)
+                        @php
+                            $currentDate = now()->startOfMonth()->addDays($day - 1)->toDateString();
+                            $dayTasks = $calendarTasks->get($currentDate, collect());
+                            $isToday = $currentDate === now()->toDateString();
+                        @endphp
+                        <div class="h-20 p-1.5 rounded-lg border {{ $isToday ? 'border-indigo-500 bg-indigo-50/40' : 'border-gray-100 bg-white' }} overflow-y-auto">
+                            <div class="text-xs font-bold {{ $isToday ? 'text-indigo-700' : 'text-gray-700' }} mb-1">
+                                {{ $day }}
+                            </div>
+                            @foreach($dayTasks as $t)
+                                <a href="{{ route('tasks.show', $t) }}" class="block truncate text-[10px] px-1.5 py-0.5 rounded mb-0.5 font-medium
+                                    {{ $t->status === 'completed' ? 'bg-emerald-100 text-emerald-800' : ($t->status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800') }}">
+                                    {{ $t->title }}
+                                </a>
+                            @endforeach
+                        </div>
+                    @endfor
                 </div>
             </div>
 
-            <!-- 2. Filtros de Tareas -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                <h3 class="text-base font-bold text-gray-800">Filtros de Tareas</h3>
-                <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap gap-2 w-full md:w-auto">
-                    <select name="status" class="text-xs rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">-- Todos los Estados --</option>
-                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pendientes</option>
-                        <option value="in_progress" {{ request('status') == 'in_progress' ? 'selected' : '' }}>En Proceso</option>
-                        <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completadas</option>
-                        <option value="overdue" {{ request('status') == 'overdue' ? 'selected' : '' }}>Vencidas</option>
-                    </select>
-
-                    <select name="priority" class="text-xs rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">-- Todas las Prioridades --</option>
-                        <option value="low" {{ request('priority') == 'low' ? 'selected' : '' }}>Baja</option>
-                        <option value="medium" {{ request('priority') == 'medium' ? 'selected' : '' }}>Media</option>
-                        <option value="high" {{ request('priority') == 'high' ? 'selected' : '' }}>Alta</option>
-                    </select>
-
-                    <button type="submit" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold rounded-md transition">Filtrar</button>
-                    <a href="{{ route('dashboard') }}" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-md transition">Limpiar</a>
-                </form>
+            <!-- Próximas Tareas (1 columna) -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Próximas Tareas</h3>
+                <div class="space-y-3">
+                    @forelse($upcomingTasks as $task)
+                        <div class="p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
+                            <div class="flex items-center justify-between">
+                                <a href="{{ route('tasks.show', $task) }}" class="font-bold text-sm text-gray-800 hover:text-indigo-600 truncate">
+                                    {{ $task->title }}
+                                </a>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full
+                                    {{ $task->priority === 'high' ? 'bg-red-100 text-red-700' : ($task->priority === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700') }}">
+                                    {{ ucfirst($task->priority) }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Vence: {{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('d/m/Y') : 'Sin fecha' }}
+                            </p>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-400 italic">No tienes tareas pendientes.</p>
+                    @endforelse
+                </div>
             </div>
-
-            <!-- 3. LISTAS DE TAREAS -->
-
-            @if(Auth::user()->isEditor())
-                <!-- VISTA EXCLUSIVA PARA EDITOR: TABLAS SEPARADAS -->
-
-                <!-- A. Tareas Asignadas al Editor -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden p-6">
-                    <h3 class="text-lg font-bold text-indigo-700 mb-4 flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                        Tareas Asignadas a Mí
-                    </h3>
-                    @include('tasks.partials.table', ['tasksList' => $assignedTasks])
-                </div>
-
-                <!-- B. Tareas Creadas por el Editor -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden p-6">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                        Tareas Creadas por Mí
-                    </h3>
-                    @include('tasks.partials.table', ['tasksList' => $createdTasks])
-                </div>
-
-            @else
-                <!-- VISTA PARA ADMINISTRADOR Y LECTOR: UNICA TABLA -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden p-6">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4">Listado de Tareas General</h3>
-                    @include('tasks.partials.table', ['tasksList' => $allTasks])
-                </div>
-            @endif
 
         </div>
     </div>

@@ -16,6 +16,11 @@
         {{ __('Home') }}
     </x-nav-link>
 
+    <x-nav-link :href="route('tasks.board')" :active="request()->routeIs('tasks.board')">
+        {{ __('Tablero Kanban') }}
+    </x-nav-link>
+
+
     <!-- Solo visible para el Administrador -->
     @if(Auth::user()->isAdmin())
         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">

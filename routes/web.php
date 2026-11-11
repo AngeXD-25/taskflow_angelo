@@ -29,6 +29,17 @@ Route::middleware(['auth', 'verified', 'user.active'])->group(function () {
         Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     });
 
+    Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');   
+
+    Route::patch('/tasks/{task}/toggle-status', [TaskController::class, 'toggleStatus'])->name('tasks.toggle-status');
+
+    // Dashboard (Métricas y Calendario)
+    Route::get('/dashboard', [TaskController::class, 'index'])->name('dashboard');
+
+    // Nueva página dedicada al Tablero Kanban
+    Route::get('/board', [TaskController::class, 'board'])->name('tasks.board');
+
+
     // Perfil de Usuario
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
